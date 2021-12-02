@@ -1,0 +1,16 @@
+{
+  "name": "blin",
+  "version": "1.0.0",
+  "description": "Blockchain simulator and sandbox",
+  "main": "dist/index.js",
+  "scripts": {
+	"start": "cross-env NODE_ENV=dev ts-node src/index.ts",
+	"build": "tsc",
+	"test": "cross-env NODE_ENV=test ts-node node_modules/jasmine/bin/jasmine --config=jasmine.json"
+  },
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+	"typescript": "^4.5.2"
+  }
+}
