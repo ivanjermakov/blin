@@ -1,3 +1,3 @@
-# blin
+# Blin
 
-Blockchain simulator and sandbox
+Blin is a **BL**ockcha**IN** simulator and sandbox
