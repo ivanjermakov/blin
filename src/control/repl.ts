@@ -1,19 +1,7 @@
 import repl from 'repl'
 import {Pool} from '../core/pool'
-
-export interface Command {
-	type: string
-}
-
-export interface UnknownCommand extends Command {
-	command: string
-}
-
-export interface SendCommand extends Command {
-	clientId: string
-	method: string
-	args: string[]
-}
+import {AddPeerCommand, Command, DelPeerCommand, SendPeerCommand, UnknownCommand} from './command'
+import {Message} from '../core/message'
 
 export class Repl {
 
@@ -34,7 +22,7 @@ export class Repl {
 					callback(null, undefined)
 				} else {
 					const command = this.parse(input)
-					console.log(command)
+					// console.log(command)
 					callback(null, this.pool.handleCommand(command))
 				}
 			}
@@ -42,7 +30,7 @@ export class Repl {
 	}
 
 	complete(line: string) {
-		const commands = '/send /show'.split(' ')
+		const commands = '/add /show /send'.split(' ')
 		const matching = commands.filter(t => t.startsWith(line))
 		return [
 			line.length ? matching : commands,
@@ -59,13 +47,36 @@ export class Repl {
 		const tokens = command.split(' ')
 		const type = tokens[0].slice(1)
 		switch (type) {
+			case 'add': {
+				return {
+					type: type,
+					args: this.parseArgs(tokens.slice(1))
+				} as AddPeerCommand
+			}
+			case 'del': {
+				return {
+					type: type,
+					id: tokens[1],
+					args: this.parseArgs(tokens.slice(1))
+				} as DelPeerCommand
+			}
+			case 'show': {
+				return {
+					type: type,
+					id: tokens[1],
+					args: this.parseArgs(tokens.slice(2))
+				} as AddPeerCommand
+			}
 			case 'send': {
 				return {
 					type: type,
-					clientId: tokens[1],
-					method: tokens[2],
-					args: this.parseArgs(tokens.slice(3))
-				} as SendCommand
+					id: tokens[1],
+					message: {
+						type: tokens[2],
+						data: tokens[3]
+					},
+					args: this.parseArgs(tokens.slice(4))
+				} as SendPeerCommand
 			}
 			default: {
 				return {
