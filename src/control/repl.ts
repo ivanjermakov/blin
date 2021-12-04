@@ -18,7 +18,6 @@ export interface SendCommand extends Command {
 export class Repl {
 
 	pool: Pool
-	commands = '/send'.split(' ')
 
 	constructor(pool: Pool) {
 		this.pool = pool
@@ -28,13 +27,7 @@ export class Repl {
 		repl.start({
 			prompt: '> ',
 			ignoreUndefined: true,
-			completer: (line: string) => {
-				const matching = this.commands.filter(t => t.startsWith(line))
-				return [
-					matching.length ? matching : this.commands,
-					matching.length === 0 ? matching[0] : line
-				]
-			},
+			completer: (line: string) => this.complete(line),
 			eval: (input, context, filename, callback) => {
 				input = input.trim()
 				if (input === '') {
@@ -46,6 +39,15 @@ export class Repl {
 				}
 			}
 		})
+	}
+
+	complete(line: string) {
+		const commands = '/send /show'.split(' ')
+		const matching = commands.filter(t => t.startsWith(line))
+		return [
+			line.length ? matching : commands,
+			line
+		]
 	}
 
 	/**
