@@ -1,7 +1,9 @@
 import {Message} from '../core/message'
 
+export type CommandType = 'unknown' | 'help' | 'add' | 'del' | 'show' | 'send'
+
 export interface Command {
-	type: 'unknown' | 'help' | 'add' | 'del' | 'show' | 'send'
+	type: CommandType
 	args?: any[]
 }
 

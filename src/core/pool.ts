@@ -1,9 +1,9 @@
-import {Peer} from './peer'
+import {Node} from './node'
 import {AddPeerCommand, Command, DelPeerCommand, SendPeerCommand, ShowPeerCommand} from '../control/command'
 
 export class Pool {
 
-	peers: Map<string, Peer> = new Map<string, Peer>()
+	peers: Map<string, Node> = new Map<string, Node>()
 
 	handleCommand(command: Command) {
 		switch (command.type) {
@@ -12,10 +12,10 @@ export class Pool {
 			}
 			case 'add': {
 				const addCommand = command as AddPeerCommand
-				const miner = addCommand.args?.[0] || false
-				const peer = new Peer(this, miner)
-				this.peers.set(peer.id, peer)
-				return [peer]
+				const type = addCommand.args?.[0] || 'basic'
+				const node = new Node(this, type)
+				this.peers.set(node.id, node)
+				return [node]
 			}
 			case 'del': {
 				const delCommand = command as DelPeerCommand

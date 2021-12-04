@@ -1,4 +1,15 @@
+import {Transaction} from './transaction'
+
+export type MessageType = 'newTransaction' | 'requestBlocks' | 'requestTransactions' | 'mined'
+
 export interface Message {
-	type: 'newTransaction' | 'requestBlocks' | 'requestTransactions' | 'mined'
-	data: any
+	type: MessageType
+}
+
+export interface TransactionMessage extends Message {
+	transaction: Transaction
+}
+
+export interface RequestMessage extends Message {
+	limit: number
 }
