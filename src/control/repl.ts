@@ -1,17 +1,26 @@
 import repl from 'repl'
 import {Pool} from '../core/pool'
 import {AddPeerCommand, Command, DelPeerCommand, SendPeerCommand, UnknownCommand} from './command'
-import {Message} from '../core/message'
 
 export class Repl {
 
 	pool: Pool
+	help: any = {
+		availableCommands: [
+			{help: 'Show this message'},
+			{add: 'Add new peer [isMiner]'},
+			{del: 'Remove peer <id>'},
+			{show: 'Show peers [id]'},
+			{send: 'Send new message by peer <id> <type> <data>'},
+		]
+	}
 
 	constructor(pool: Pool) {
 		this.pool = pool
 	}
 
 	start() {
+		this.showMotd()
 		repl.start({
 			prompt: '> ',
 			ignoreUndefined: true,
@@ -23,14 +32,28 @@ export class Repl {
 				} else {
 					const command = this.parse(input)
 					// console.log(command)
-					callback(null, this.pool.handleCommand(command))
+					switch (command.type) {
+						case 'help': {
+							callback(null, this.help)
+							return
+						}
+						default: {
+							callback(null, this.pool.handleCommand(command))
+						}
+					}
 				}
 			}
 		})
 	}
 
+	showMotd() {
+		console.log('Welcome to Blin v1.0.0')
+		console.log('Use /help for more information')
+		console.log()
+	}
+
 	complete(line: string) {
-		const commands = '/add /show /send'.split(' ')
+		const commands = '/help /add /show /send'.split(' ')
 		const matching = commands.filter(t => t.startsWith(line))
 		return [
 			line.length ? matching : commands,
@@ -47,6 +70,11 @@ export class Repl {
 		const tokens = command.split(' ')
 		const type = tokens[0].slice(1)
 		switch (type) {
+			case 'help': {
+				return {
+					type: type,
+				} as Command
+			}
 			case 'add': {
 				return {
 					type: type,

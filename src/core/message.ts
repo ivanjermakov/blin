@@ -1,4 +1,4 @@
 export interface Message {
-	type: 'new'
-	data: string
+	type: 'newTransaction' | 'requestBlocks' | 'requestTransactions' | 'mined'
+	data: any
 }

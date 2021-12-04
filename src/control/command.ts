@@ -1,12 +1,12 @@
 import {Message} from '../core/message'
 
 export interface Command {
-	type: 'unknown' | 'add' | 'del' | 'show' | 'send'
+	type: 'unknown' | 'help' | 'add' | 'del' | 'show' | 'send'
+	args?: any[]
 }
 
 export interface UnknownCommand extends Command {
 	command: string
-	args?: string[]
 }
 
 export interface AddPeerCommand extends Command {
