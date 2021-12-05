@@ -1,5 +1,6 @@
 import repl from 'repl'
 import {Pool} from '../core/pool'
+import {Address} from '../core/address'
 
 export class Repl {
 
@@ -16,6 +17,7 @@ export class Repl {
 			ignoreUndefined: true
 		})
 		replServer.context.pool = this.pool
+		replServer.context.Address = Address
 	}
 
 	showMotd() {

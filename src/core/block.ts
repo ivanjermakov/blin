@@ -5,23 +5,27 @@ export interface Blockchain {
 	firstBlock: Block
 }
 
-export interface Block {
-	id: number
-	data: Transaction[]
-	prevBlock: Block
-	nextBlocks: Block[]
-	hash: string
-	nonce: number
-	coinbase: Coinbase
+export class Block {
+
+	constructor(
+		public id: number,
+		public data: Transaction[],
+		public prevBlock: Block,
+		public nextBlocks: Block[],
+		public hash: string,
+		public nonce: number,
+		public coinbase: Coinbase
+	) {
+	}
+
+	hashable() {
+		const copy = clone(this)
+		copy.hash = ''
+		return copy
+	}
 }
 
 interface Coinbase {
 	minerId: string
 	reward: number
-}
-
-export function hashableBlock(block: Block) {
-	const copy = clone(block)
-	copy.hash = ''
-	return copy
 }

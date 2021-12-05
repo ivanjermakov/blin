@@ -1,23 +1,24 @@
-import {randomBytes} from 'crypto'
 import {Message, MinedMessage, ProvideTransactionsMessage, RequestMessage, TransactionMessage} from './message'
-import {signableTransaction, Transaction} from './transaction'
+import {Transaction} from './transaction'
 import {Pool} from './pool'
 import {sha256Hash, sha256Verify} from '../util/hash'
 import keypair, {KeypairResults} from 'keypair'
 import {sign, verify} from '../util/signature'
-import {Show} from '../util/format'
-import {Block, Blockchain, hashableBlock} from './block'
+import {Block, Blockchain} from './block'
 import {Optional} from '../util/optional'
+import {inspect, InspectOptions} from 'util'
+import {Address} from './address'
+import {Id} from './id'
 
 export type NodeType = 'basic' | 'full' | 'miner'
 
-export class Node implements Show {
+export class Node {
 
 	pool: Pool
 	type: NodeType
-	id: string
+	id: Id
 	key: KeypairResults
-	address: string
+	address: Address
 	/**
 	 * Unconfirmed transactions
 	 */
@@ -27,14 +28,14 @@ export class Node implements Show {
 	constructor(pool: Pool, type: NodeType) {
 		this.pool = pool
 		this.type = type
-		this.id = randomBytes(2).toString('hex')
+		this.id = new Id()
 		this.key = keypair()
-		this.address = sha256Hash(this.key.public)
+		this.address = new Address(this.key.public)
 		this.requestTransactions()
 		this.requestBlocks()
 	}
 
-	show(): any {
+	[inspect.custom](depth: number, opts: InspectOptions) {
 		return {
 			id: this.id,
 			type: this.type,
@@ -65,10 +66,10 @@ export class Node implements Show {
 	receiveNewTransaction(transaction: Transaction) {
 		const verified = this.verifyTransaction(transaction)
 		if (verified && !this.utxs.some(t => t.signature !== transaction.signature)) {
-			console.log(`@${this.id}`, `#${transaction.signature}`, 'is valid')
+			console.log(`@${this.id}`, `#${transaction.signature.slice(0, 4)}`, 'is valid')
 			this.utxs.push(transaction)
 		} else {
-			console.log(`@${this.id}`, `#${transaction.signature}`, 'is already exists')
+			console.log(`@${this.id}`, `#${transaction.signature.slice(0, 4)}`, 'is already exists')
 		}
 	}
 
@@ -83,7 +84,7 @@ export class Node implements Show {
 	}
 
 	verifyBlock(block: Block) {
-		const hashV = sha256Verify(hashableBlock(block), block.hash)
+		const hashV = sha256Verify(block.hashable(), block.hash)
 	}
 
 	broadcastTransaction(transaction: Transaction) {
@@ -93,22 +94,22 @@ export class Node implements Show {
 		} as TransactionMessage)
 	}
 
-	createTransaction(to: string, value: number): Transaction {
-		const transaction: Transaction = {
-			publicKey: this.key.public,
-			signature: '',
-			timestamp: new Date().valueOf(),
-			from: this.address,
-			to: to,
-			value: value
-		}
+	createTransaction(to: Address, value: number): Transaction {
+		const transaction = new Transaction(
+			this.key.public,
+			'',
+			new Date().valueOf(),
+			this.address,
+			to,
+			value
+		)
 		transaction.signature = sign(transaction, this.key.private)
 		return transaction
 	}
 
 	verifyTransaction(transaction: Transaction): boolean {
-		const sigV = verify(signableTransaction(transaction), transaction.publicKey, transaction.signature)
-		const hashV = sha256Hash(transaction.publicKey) === transaction.from
+		const sigV = verify(transaction.signable(), transaction.publicKey, transaction.signature)
+		const hashV = sha256Hash(transaction.publicKey) === transaction.from.hash
 		return sigV && hashV
 	}
 
@@ -127,8 +128,9 @@ export class Node implements Show {
 	}
 
 	broadcast<T>(message: Message) {
-		Array.from(this.pool.peers.values())
+		Array.from(this.pool.nodes.values())
 			.filter(p => p.id !== this.id)
 			.forEach(p => p.receive(message))
 	}
+
 }

@@ -1,31 +1,24 @@
 import {Node, NodeType} from './node'
-import {Message} from './message'
-import {format} from '../util/format'
 
 export class Pool {
 
-	peers: Map<string, Node> = new Map<string, Node>()
+	nodes: Map<string, Node> = new Map<string, Node>()
 
 	addNode(type?: NodeType) {
 		const node = new Node(this, type || 'basic')
-		this.peers.set(node.id, node)
-		return format([node])
+		this.nodes.set(node.id.id.slice(0, 4), node)
+		return node
 	}
 
 	delNode(id: string) {
-		const delPeer = this.peers.get(id)
+		const delPeer = this.nodes.get(id)
 		if (!delPeer) return 'no such peer'
-		this.peers.delete(id)
-		return format(['removed', delPeer])
+		this.nodes.delete(id)
+		return ['removed', delPeer]
 	}
 
 	showNodes(id?: string) {
-		return format([id ? this.peers.get(id) : this.peers])
-	}
-
-	sendMessage(id: string, message: Message) {
-		this.peers.get(id)!.broadcast(message)
-		return format(['sent'])
+		return id ? this.nodes.get(id) : this.nodes
 	}
 
 }

@@ -1,17 +1,34 @@
 import {clone} from '../util/clone'
+import {inspect, InspectOptions} from 'util'
+import {Address} from './address'
 
-export interface Transaction {
-	id?: number
-	publicKey: string
-	signature: string
-	timestamp: number
-	from: string
-	to: string
-	value: number
-}
+export class Transaction {
 
-export function signableTransaction(tx: Transaction) {
-	const copy = clone(tx)
-	copy.signature = ''
-	return copy
+	constructor(
+		public publicKey: string,
+		public signature: string,
+		public timestamp: number,
+		public from: Address,
+		public to: Address,
+		public value: number,
+		public id?: number
+	) {
+	}
+
+	[inspect.custom](depth: number, opts: InspectOptions) {
+		return {
+			id: this.id,
+			signature: this.signature,
+			from: this.from,
+			to: this.to,
+			value: this.value
+		}
+	}
+
+	signable() {
+		const copy = clone(this)
+		copy.signature = ''
+		return copy
+	}
+
 }
