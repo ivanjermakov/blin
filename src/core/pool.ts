@@ -1,40 +1,31 @@
-import {Node} from './node'
-import {AddPeerCommand, Command, DelPeerCommand, SendPeerCommand, ShowPeerCommand} from '../control/command'
+import {Node, NodeType} from './node'
+import {Message} from './message'
+import {format} from '../util/format'
 
 export class Pool {
 
 	peers: Map<string, Node> = new Map<string, Node>()
 
-	handleCommand(command: Command) {
-		switch (command.type) {
-			case 'unknown': {
-				return [command]
-			}
-			case 'add': {
-				const addCommand = command as AddPeerCommand
-				const type = addCommand.args?.[0] || 'basic'
-				const node = new Node(this, type)
-				this.peers.set(node.id, node)
-				return [node]
-			}
-			case 'del': {
-				const delCommand = command as DelPeerCommand
-				const delPeer = this.peers.get(delCommand.id)
-				if (!delPeer) return 'no such peer'
-				this.peers.delete(delCommand.id)
-				return ['removed', delPeer]
-			}
-			case 'show': {
-				const showCommand = command as ShowPeerCommand
-				return [showCommand.id ? this.peers.get(showCommand.id) : this.peers]
-			}
-			case 'send': {
-				const sendCommand = command as SendPeerCommand
-				this.peers.get(sendCommand.id)!.broadcast(sendCommand.message)
-				return ['sent']
-			}
-		}
-		return ''
+	addNode(type?: NodeType) {
+		const node = new Node(this, type || 'basic')
+		this.peers.set(node.id, node)
+		return format([node])
+	}
+
+	delNode(id: string) {
+		const delPeer = this.peers.get(id)
+		if (!delPeer) return 'no such peer'
+		this.peers.delete(id)
+		return format(['removed', delPeer])
+	}
+
+	showNodes(id?: string) {
+		return format([id ? this.peers.get(id) : this.peers])
+	}
+
+	sendMessage(id: string, message: Message) {
+		this.peers.get(id)!.broadcast(message)
+		return format(['sent'])
 	}
 
 }

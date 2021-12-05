@@ -2,19 +2,20 @@ import {randomBytes} from 'crypto'
 import {Message, RequestMessage, TransactionMessage} from './message'
 import {Transaction} from './transaction'
 import {Pool} from './pool'
-import NodeRSA from 'node-rsa'
 import {sha256} from '../util/hash'
 import {clone} from '../util/clone'
+import keypair, {KeypairResults} from 'keypair'
+import {sign, verify} from '../util/signature'
+import {Show} from '../util/format'
 
 export type NodeType = 'basic' | 'full' | 'miner'
 
-export class Node {
+export class Node implements Show {
 
 	pool: Pool
 	type: NodeType
 	id: string
-	key: NodeRSA
-	publicKey: string
+	key: KeypairResults
 	address: string
 	ledger: Transaction[] = []
 
@@ -22,9 +23,16 @@ export class Node {
 		this.pool = pool
 		this.type = type
 		this.id = randomBytes(2).toString('hex')
-		this.key = new NodeRSA({b: 8}).generateKeyPair()
-		this.publicKey = this.key.exportKey('public')
-		this.address = sha256(this.publicKey)
+		this.key = keypair()
+		this.address = sha256(this.key.public)
+	}
+
+	show(): any {
+		return {
+			id: this.id,
+			type: this.type,
+			address: this.address
+		}
 	}
 
 	receive<T>(message: Message): void {
@@ -48,14 +56,14 @@ export class Node {
 
 	createTransaction(to: string, value: number): Transaction {
 		const transaction: Transaction = {
-			publicKey: this.publicKey,
+			publicKey: this.key.public,
 			signature: '',
 			from: this.address,
 			to: to,
 			value: value
 		}
-		transaction.signature = this.key.sign(transaction).toString('hex')
-		return transaction as Transaction
+		transaction.signature = sign(transaction, this.key.private)
+		return transaction
 	}
 
 	verifyTransaction(transaction: Transaction): boolean {
@@ -64,8 +72,7 @@ export class Node {
 			cloned.signature = ''
 			return cloned
 		}
-		const key = new NodeRSA({b: 8}).importKey(transaction.publicKey)
-		const sigV = key.verify(transaction, Buffer.from(txNoSig(transaction).signature, 'hex'))
+		const sigV = verify(txNoSig(transaction), transaction.publicKey, transaction.signature)
 		const hashV = sha256(transaction.publicKey) === transaction.from
 		return sigV && hashV
 	}

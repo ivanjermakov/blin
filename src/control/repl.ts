@@ -1,11 +1,11 @@
 import repl from 'repl'
 import {Pool} from '../core/pool'
-import {AddPeerCommand, Command, DelPeerCommand, SendPeerCommand, UnknownCommand} from './command'
+import {AddNodeCommand, Command, DelNodeCommand, SendMessageCommand, UnknownCommand} from './command'
 
 export class Repl {
 
 	pool: Pool
-	help: any = {
+	help = () => ({
 		availableCommands: [
 			{help: 'Show this message'},
 			{add: 'Add new peer [isMiner]'},
@@ -13,7 +13,7 @@ export class Repl {
 			{show: 'Show peers [id]'},
 			{send: 'Send new message by peer <id> <type> <data>'},
 		]
-	}
+	})
 
 	constructor(pool: Pool) {
 		this.pool = pool
@@ -21,29 +21,12 @@ export class Repl {
 
 	start() {
 		this.showMotd()
-		repl.start({
+		const replServer = repl.start({
 			prompt: '> ',
-			ignoreUndefined: true,
-			completer: (line: string) => this.complete(line),
-			eval: (input, context, filename, callback) => {
-				input = input.trim()
-				if (input === '') {
-					callback(null, undefined)
-				} else {
-					const command = this.parse(input)
-					// console.log(command)
-					switch (command.type) {
-						case 'help': {
-							callback(null, this.help)
-							return
-						}
-						default: {
-							callback(null, this.pool.handleCommand(command))
-						}
-					}
-				}
-			}
+			ignoreUndefined: true
 		})
+		replServer.context.pool = this.pool
+		replServer.context.help = this.help
 	}
 
 	showMotd() {
@@ -79,21 +62,21 @@ export class Repl {
 				return {
 					type: type,
 					args: this.parseArgs(tokens.slice(1))
-				} as AddPeerCommand
+				} as AddNodeCommand
 			}
 			case 'del': {
 				return {
 					type: type,
 					id: tokens[1],
 					args: this.parseArgs(tokens.slice(1))
-				} as DelPeerCommand
+				} as DelNodeCommand
 			}
 			case 'show': {
 				return {
 					type: type,
 					id: tokens[1],
 					args: this.parseArgs(tokens.slice(2))
-				} as AddPeerCommand
+				} as AddNodeCommand
 			}
 			case 'send': {
 				return {
@@ -104,7 +87,7 @@ export class Repl {
 						data: tokens[3]
 					},
 					args: this.parseArgs(tokens.slice(4))
-				} as SendPeerCommand
+				} as SendMessageCommand
 			}
 			default: {
 				return {

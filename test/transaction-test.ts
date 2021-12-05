@@ -1,21 +1,14 @@
-import {Pool} from '../src/core/pool'
-import {Node} from '../src/core/node'
+import keypair from 'keypair'
+import {sign, verify} from '../src/util/signature'
 
-const pool = new Pool()
+describe('signature test', () => {
 
-const node = new Node(pool, 'basic')
+	it('should sign and verify data', () => {
+		const data = {some: 'some', num: 14}
+		const keys = keypair()
+		const sig = sign(data, keys.private)
+		const verified = verify(data, keys.public, sig)
+		expect(verified).toBeTruthy()
+	})
 
-const transaction = node.createTransaction('abcd', 12)
-console.log(transaction)
-
-
-/*
-const data = 'abc'
-const key = new NodeRSA().generateKeyPair()
-const pubKey = key.exportKey('public')
-const sig = key.sign(data).toString('hex')
-console.log(sig)
-
-const importKey = new NodeRSA().importKey(pubKey, 'public')
-const verified = importKey.verify(data, Buffer.from(sig, 'hex'))
-console.log(verified)*/
+})

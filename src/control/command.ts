@@ -11,18 +11,18 @@ export interface UnknownCommand extends Command {
 	command: string
 }
 
-export interface AddPeerCommand extends Command {
+export interface AddNodeCommand extends Command {
 }
 
-export interface DelPeerCommand extends Command {
+export interface DelNodeCommand extends Command {
 	id: string
 }
 
-export interface ShowPeerCommand extends Command {
+export interface ShowNodeCommand extends Command {
 	id?: string
 }
 
-export interface SendPeerCommand extends Command {
+export interface SendMessageCommand extends Command {
 	id: string
 	message: Message
 }
