@@ -1,6 +1,13 @@
 import {Transaction} from './transaction'
+import {Block, Blockchain} from './block'
 
-export type MessageType = 'newTransaction' | 'requestBlocks' | 'requestTransactions' | 'mined'
+export type MessageType =
+	'newTransaction'
+	| 'requestBlockchain'
+	| 'provideBlockchain'
+	| 'requestTransactions'
+	| 'provideTransactions'
+	| 'mined'
 
 export interface Message {
 	type: MessageType
@@ -11,5 +18,17 @@ export interface TransactionMessage extends Message {
 }
 
 export interface RequestMessage extends Message {
-	limit: number
+	since?: number
+}
+
+export interface ProvideTransactionsMessage extends Message {
+	transactions: Transaction[]
+}
+
+export interface ProvideBlockchainMessage extends Message {
+	chain: Blockchain
+}
+
+export interface MinedMessage extends Message {
+	block: Block
 }

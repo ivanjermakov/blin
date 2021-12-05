@@ -1,12 +1,13 @@
 import {randomBytes} from 'crypto'
-import {Message, RequestMessage, TransactionMessage} from './message'
-import {Transaction} from './transaction'
+import {Message, MinedMessage, ProvideTransactionsMessage, RequestMessage, TransactionMessage} from './message'
+import {signableTransaction, Transaction} from './transaction'
 import {Pool} from './pool'
-import {sha256} from '../util/hash'
-import {clone} from '../util/clone'
+import {sha256Hash, sha256Verify} from '../util/hash'
 import keypair, {KeypairResults} from 'keypair'
 import {sign, verify} from '../util/signature'
 import {Show} from '../util/format'
+import {Block, Blockchain, hashableBlock} from './block'
+import {Optional} from '../util/optional'
 
 export type NodeType = 'basic' | 'full' | 'miner'
 
@@ -17,14 +18,20 @@ export class Node implements Show {
 	id: string
 	key: KeypairResults
 	address: string
-	ledger: Transaction[] = []
+	/**
+	 * Unconfirmed transactions
+	 */
+	utxs: Transaction[] = []
+	blockchain: Optional<Blockchain> = null
 
 	constructor(pool: Pool, type: NodeType) {
 		this.pool = pool
 		this.type = type
 		this.id = randomBytes(2).toString('hex')
 		this.key = keypair()
-		this.address = sha256(this.key.public)
+		this.address = sha256Hash(this.key.public)
+		this.requestTransactions()
+		this.requestBlocks()
 	}
 
 	show(): any {
@@ -40,24 +47,57 @@ export class Node implements Show {
 		switch (message.type) {
 			case 'newTransaction':
 				const transaction = (message as TransactionMessage).transaction
-				const verified = this.verifyTransaction(transaction)
-				if (verified && !this.ledger.some(t => t.signature !== transaction.signature)) {
-					console.log(`@${this.id}`, `#${transaction.id}`, 'VALID')
-				}
+				this.receiveNewTransaction(transaction)
 				break
-			case 'requestBlocks':
+			case 'requestBlockchain':
 				break
 			case 'requestTransactions':
+				const requestMessage = message as RequestMessage
+				this.provideTransactions(requestMessage)
 				break
 			case 'mined':
+				const minedMessage = message as MinedMessage
+				this.verifyBlock(minedMessage.block)
 				break
 		}
+	}
+
+	receiveNewTransaction(transaction: Transaction) {
+		const verified = this.verifyTransaction(transaction)
+		if (verified && !this.utxs.some(t => t.signature !== transaction.signature)) {
+			console.log(`@${this.id}`, `#${transaction.signature}`, 'is valid')
+			this.utxs.push(transaction)
+		} else {
+			console.log(`@${this.id}`, `#${transaction.signature}`, 'is already exists')
+		}
+	}
+
+	provideTransactions(requestMessage: RequestMessage) {
+		const provideTxs = requestMessage.since
+			? this.utxs.filter(tx => tx.timestamp > requestMessage.since!)
+			: this.utxs
+		this.broadcast({
+			type: 'provideTransactions',
+			transactions: provideTxs
+		} as ProvideTransactionsMessage)
+	}
+
+	verifyBlock(block: Block) {
+		const hashV = sha256Verify(hashableBlock(block), block.hash)
+	}
+
+	broadcastTransaction(transaction: Transaction) {
+		this.broadcast({
+			type: 'newTransaction',
+			transaction: transaction
+		} as TransactionMessage)
 	}
 
 	createTransaction(to: string, value: number): Transaction {
 		const transaction: Transaction = {
 			publicKey: this.key.public,
 			signature: '',
+			timestamp: new Date().valueOf(),
 			from: this.address,
 			to: to,
 			value: value
@@ -67,27 +107,22 @@ export class Node implements Show {
 	}
 
 	verifyTransaction(transaction: Transaction): boolean {
-		const txNoSig = (tx: Transaction) => {
-			const cloned = clone(tx)
-			cloned.signature = ''
-			return cloned
-		}
-		const sigV = verify(txNoSig(transaction), transaction.publicKey, transaction.signature)
-		const hashV = sha256(transaction.publicKey) === transaction.from
+		const sigV = verify(signableTransaction(transaction), transaction.publicKey, transaction.signature)
+		const hashV = sha256Hash(transaction.publicKey) === transaction.from
 		return sigV && hashV
 	}
 
-	requestBlocks(limit: number) {
+	requestBlocks(since?: number) {
 		this.broadcast({
-			type: 'requestBlocks',
-			limit: limit
+			type: 'requestBlockchain',
+			since: since
 		} as RequestMessage)
 	}
 
-	requestTransactions(limit: number) {
+	requestTransactions(since?: number) {
 		this.broadcast({
 			type: 'requestTransactions',
-			limit: limit
+			since: since
 		} as RequestMessage)
 	}
 
