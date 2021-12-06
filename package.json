@@ -4,24 +4,25 @@
   "description": "Blockchain simulator and sandbox",
   "main": "dist/index.js",
   "scripts": {
-    "start": "cross-env NODE_ENV=dev ts-node src/index.ts",
-    "build": "tsc",
-    "test": "cross-env NODE_ENV=test ts-node node_modules/jasmine/bin/jasmine --config=jasmine.json"
+	"start": "cross-env NODE_ENV=dev ts-node src/index.ts",
+	"build": "tsc",
+	"test": "cross-env NODE_ENV=test ts-node node_modules/jasmine/bin/jasmine --config=jasmine.json"
   },
   "author": "",
   "license": "ISC",
   "devDependencies": {
-    "@types/node": "^16.11.11",
-    "@types/node-rsa": "^1.1.1",
-    "cross-env": "^7.0.3",
-    "typescript": "^4.5.2"
+	"@types/node": "^16.11.11",
+	"@types/node-rsa": "^1.1.1",
+	"cross-env": "^7.0.3",
+	"typescript": "^4.5.2"
   },
   "dependencies": {
-    "@types/jasmine": "^3.5.9",
-    "@types/node": "^13.9.2",
-    "jasmine": "^3.5.0",
-    "keypair": "^1.0.4",
-    "node-rsa": "^1.1.1",
-    "rxjs": "^7.4.0"
+	"@types/jasmine": "^3.5.9",
+	"@types/node": "^13.9.2",
+	"dotenv": "^10.0.0",
+	"jasmine": "^3.5.0",
+	"keypair": "^1.0.4",
+	"node-rsa": "^1.1.1",
+	"rxjs": "^7.4.0"
   }
 }

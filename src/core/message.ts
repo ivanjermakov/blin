@@ -1,5 +1,5 @@
 import {Transaction} from './transaction'
-import {Block, Blockchain} from './block'
+import {Block, Blockchain} from './blockchain'
 
 export type MessageType =
 	'newTransaction'

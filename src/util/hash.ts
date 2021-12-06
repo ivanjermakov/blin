@@ -5,5 +5,5 @@ export function sha256Hash(data: any): string {
 }
 
 export function sha256Verify(data: any, hash: string): boolean {
-	return sha256Hash(JSON.stringify(data)) === hash
+	return sha256Hash(data) === hash
 }

@@ -5,9 +5,7 @@ export class Pool {
 	nodes: Map<string, Node> = new Map<string, Node>()
 
 	addNode(type?: NodeType) {
-		const node = new Node(this, type || 'basic')
-		this.nodes.set(node.id.id.slice(0, 4), node)
-		return node
+		return new Node(this, type || 'basic')
 	}
 
 	delNode(id: string) {

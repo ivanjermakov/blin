@@ -4,11 +4,12 @@ import {Pool} from './pool'
 import {sha256Hash, sha256Verify} from '../util/hash'
 import keypair, {KeypairResults} from 'keypair'
 import {sign, verify} from '../util/signature'
-import {Block, Blockchain} from './block'
-import {Optional} from '../util/optional'
+import {Block, Blockchain} from './blockchain'
 import {inspect, InspectOptions} from 'util'
 import {Address} from './address'
 import {Id} from './id'
+import {Miner} from './miner'
+import {config} from '../control/config'
 
 export type NodeType = 'basic' | 'full' | 'miner'
 
@@ -23,7 +24,7 @@ export class Node {
 	 * Unconfirmed transactions
 	 */
 	utxs: Transaction[] = []
-	blockchain: Optional<Blockchain> = null
+	blockchain: Blockchain = Blockchain.singleBlock()
 
 	constructor(pool: Pool, type: NodeType) {
 		this.pool = pool
@@ -31,8 +32,12 @@ export class Node {
 		this.id = new Id()
 		this.key = keypair()
 		this.address = new Address(this.key.public)
-		this.requestTransactions()
-		this.requestBlocks()
+
+		this.pool.nodes.set(this.id.id.slice(0, 4), this)
+		if (['full', 'miner'].includes(this.type)) {
+			this.requestTransactions()
+		}
+		// this.requestBlocks()
 	}
 
 	[inspect.custom](depth: number, opts: InspectOptions) {
@@ -44,17 +49,20 @@ export class Node {
 	}
 
 	receive<T>(message: Message): void {
-		console.log(`@${this.id}`, 'received', message)
+		if (this.type === 'basic' && ['newTransaction', 'requestTransactions'].includes(message.type)) return
+
+		console.log(this.type, this.id, 'received', message)
+
 		switch (message.type) {
 			case 'newTransaction':
 				const transaction = (message as TransactionMessage).transaction
 				this.receiveNewTransaction(transaction)
 				break
-			case 'requestBlockchain':
-				break
 			case 'requestTransactions':
 				const requestMessage = message as RequestMessage
 				this.provideTransactions(requestMessage)
+				break
+			case 'requestBlockchain':
 				break
 			case 'mined':
 				const minedMessage = message as MinedMessage
@@ -65,11 +73,14 @@ export class Node {
 
 	receiveNewTransaction(transaction: Transaction) {
 		const verified = this.verifyTransaction(transaction)
-		if (verified && !this.utxs.some(t => t.signature !== transaction.signature)) {
-			console.log(`@${this.id}`, `#${transaction.signature.slice(0, 4)}`, 'is valid')
+		if (verified && !this.utxs.some(t => t.signature === transaction.signature)) {
+			console.log(this.id, `#${transaction.signature.slice(0, 4)}`, 'is valid')
 			this.utxs.push(transaction)
+			if (this.type === 'miner') {
+				this.mine()
+			}
 		} else {
-			console.log(`@${this.id}`, `#${transaction.signature.slice(0, 4)}`, 'is already exists')
+			console.log(this.id, `#${transaction.signature.slice(0, 4)}`, 'is already exists')
 		}
 	}
 
@@ -84,7 +95,17 @@ export class Node {
 	}
 
 	verifyBlock(block: Block) {
-		const hashV = sha256Verify(block.hashable(), block.hash)
+		if (
+			sha256Verify(block.hashable(), block.hash) &&
+			sha256Verify(block.txHash + block.nonce, block.targetHash!) &&
+			block.targetHash?.startsWith('0'.repeat(config.leadingZeroes)) &&
+			block.coinbase?.reward === config.blockReward
+		) {
+			console.log(this.id, block.hash, 'block is valid')
+			this.blockchain!.add(block)
+		} else {
+			console.log(this.id, block.hash, 'block is invalid')
+		}
 	}
 
 	broadcastTransaction(transaction: Transaction) {
@@ -108,6 +129,7 @@ export class Node {
 	}
 
 	verifyTransaction(transaction: Transaction): boolean {
+		// TODO: verify sender's UTXO
 		const sigV = verify(transaction.signable(), transaction.publicKey, transaction.signature)
 		const hashV = sha256Hash(transaction.publicKey) === transaction.from.hash
 		return sigV && hashV
@@ -127,7 +149,26 @@ export class Node {
 		} as RequestMessage)
 	}
 
+	mine() {
+		if (this.utxs.length < config.minTransactionsPerBlock) {
+			console.log(Error('not enough UTXs'))
+			return
+		}
+
+		const block = new Miner(this).mine(
+			this.utxs,
+			this.blockchain.lastBlock,
+		)
+		console.log(this.id, 'mined block', block)
+		this.verifyBlock(block)
+		this.broadcast({
+			type: 'mined',
+			block: block
+		} as MinedMessage)
+	}
+
 	broadcast<T>(message: Message) {
+		// TODO: simulate network loss/lag
 		Array.from(this.pool.nodes.values())
 			.filter(p => p.id !== this.id)
 			.forEach(p => p.receive(message))
