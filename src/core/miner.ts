@@ -2,7 +2,7 @@ import {Node} from './node'
 import {Transaction} from './transaction'
 import {Block} from './blockchain'
 import {config} from '../control/config'
-import {sha256Hash} from '../util/hash'
+import {Hash} from './hash'
 
 export class Miner {
 
@@ -19,16 +19,16 @@ export class Miner {
 				t.id = lastTxId + i + 1
 				return t
 			})
-		const txHash = sha256Hash(blockUtxs)
-		let targetHash = ''
+		const txHash = Hash.from(blockUtxs)
+		let targetHash
 		for (let nonce = 0; ; nonce++) {
-			targetHash = sha256Hash(txHash + nonce)
-			if (targetHash.startsWith('0'.repeat(config.leadingZeroes))) {
+			targetHash = Hash.from(txHash.hash + nonce)
+			if (targetHash.withLeadingZeroes(config.leadingZeroes)) {
 				const block = new Block(
 					blockUtxs,
 					txHash,
 					[],
-					'',
+					Hash.empty(),
 					lastBlock.hash,
 					undefined,
 					new Date().valueOf(),
@@ -40,7 +40,7 @@ export class Miner {
 					nonce,
 					lastBlock.id! + 1
 				)
-				block.hash = sha256Hash(block.hashable())
+				block.hash = Hash.from(block.hashable())
 				return block
 			}
 		}

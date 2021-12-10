@@ -1,9 +1,9 @@
 import {Transaction} from './transaction'
 import {clone} from '../util/clone'
-import {Address} from './address'
 import {inspect, InspectOptions} from 'util'
 import {sort} from '../util/array'
 import {Optional} from '../util/optional'
+import {Hash} from './hash'
 
 export class Blockchain {
 
@@ -16,7 +16,7 @@ export class Blockchain {
 	}
 
 	static singleBlock(): Blockchain {
-		const block = new Block([{id: 0} as any], '0'.repeat(64), [], '0'.repeat(64))
+		const block = new Block([{id: 0} as any], Hash.zero(), [], Hash.zero())
 		block.id = 0
 		return new Blockchain(
 			block
@@ -24,7 +24,7 @@ export class Blockchain {
 	}
 
 	add(block: Block) {
-		const prevBlock = this.findBlock(b => b.hash === block.prevBlockHash)
+		const prevBlock = this.findBlock(b => b.hash.hash === block.prevBlockHash?.hash)
 		if (prevBlock) {
 			prevBlock.nextBlocks.push(block)
 			this.updateLastBlock()
@@ -64,14 +64,14 @@ export class Block {
 
 	constructor(
 		public transactions: Transaction[],
-		public txHash: string,
+		public txHash: Hash,
 		public nextBlocks: Block[],
-		public hash: string,
-		public prevBlockHash?: string,
+		public hash: Hash,
+		public prevBlockHash?: Hash,
 		public prevBlock?: Block,
 		public timestamp?: number,
 		public coinbase?: Coinbase,
-		public targetHash?: string,
+		public targetHash?: Hash,
 		public nonce?: number,
 		public id?: number
 	) {
@@ -79,12 +79,13 @@ export class Block {
 
 	[inspect.custom](depth: number, opts: InspectOptions) {
 		return {
+			id: this.id,
 			transactions: this.transactions,
 			hash: this.hash,
 			prevBlockHash: this.prevBlockHash,
 			nextBlocks: this.nextBlocks.length,
 			nonce: this.nonce,
-			id: this.id
+			targetHash: this.targetHash
 		}
 	}
 
@@ -92,13 +93,13 @@ export class Block {
 		const copy = clone(this)
 		copy.transactions = []
 		copy.nextBlocks = []
-		copy.hash = ''
+		copy.hash = Hash.empty()
 		copy.prevBlock = undefined
 		return copy
 	}
 }
 
 interface Coinbase {
-	minerAddress: Address
+	minerAddress: Hash
 	reward: number
 }

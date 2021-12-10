@@ -1,15 +1,16 @@
 import {Message, MinedMessage, ProvideTransactionsMessage, RequestMessage, TransactionMessage} from './message'
 import {Transaction} from './transaction'
 import {Pool} from './pool'
-import {sha256Hash, sha256Verify} from '../util/hash'
+import {sha256Verify} from '../util/hash'
 import keypair, {KeypairResults} from 'keypair'
 import {sign, verify} from '../util/signature'
 import {Block, Blockchain} from './blockchain'
 import {inspect, InspectOptions} from 'util'
-import {Address} from './address'
 import {Id} from './id'
 import {Miner} from './miner'
 import {config} from '../control/config'
+import {Hash} from './hash'
+import {measure} from '../util/measure'
 
 export type NodeType = 'basic' | 'full' | 'miner'
 
@@ -19,7 +20,7 @@ export class Node {
 	type: NodeType
 	id: Id
 	key: KeypairResults
-	address: Address
+	address: Hash
 	/**
 	 * Unconfirmed transactions
 	 */
@@ -30,14 +31,15 @@ export class Node {
 		this.pool = pool
 		this.type = type
 		this.id = new Id()
-		this.key = keypair()
-		this.address = new Address(this.key.public)
+		this.key = keypair({bits: 512})
+		this.address = Hash.from(this.key.public)
 
 		this.pool.nodes.set(this.id.id.slice(0, 4), this)
 		if (['full', 'miner'].includes(this.type)) {
 			this.requestTransactions()
 		}
 		// this.requestBlocks()
+		console.log('new node', this)
 	}
 
 	[inspect.custom](depth: number, opts: InspectOptions) {
@@ -96,9 +98,9 @@ export class Node {
 
 	verifyBlock(block: Block) {
 		if (
-			sha256Verify(block.hashable(), block.hash) &&
-			sha256Verify(block.txHash + block.nonce, block.targetHash!) &&
-			block.targetHash?.startsWith('0'.repeat(config.leadingZeroes)) &&
+			block.hash.verify(block.hashable()) &&
+			block.targetHash?.verify(block.txHash.hash + block.nonce) &&
+			block.targetHash?.hash.startsWith('0'.repeat(config.leadingZeroes)) &&
 			block.coinbase?.reward === config.blockReward
 		) {
 			console.log(this.id, block.hash, 'block is valid')
@@ -115,7 +117,7 @@ export class Node {
 		} as TransactionMessage)
 	}
 
-	createTransaction(to: Address, value: number): Transaction {
+	createTransaction(to: Hash, value: number): Transaction {
 		const transaction = new Transaction(
 			this.key.public,
 			'',
@@ -131,7 +133,7 @@ export class Node {
 	verifyTransaction(transaction: Transaction): boolean {
 		// TODO: verify sender's UTXO
 		const sigV = verify(transaction.signable(), transaction.publicKey, transaction.signature)
-		const hashV = sha256Hash(transaction.publicKey) === transaction.from.hash
+		const hashV = sha256Verify(transaction.publicKey, transaction.from.hash)
 		return sigV && hashV
 	}
 
@@ -151,15 +153,17 @@ export class Node {
 
 	mine() {
 		if (this.utxs.length < config.minTransactionsPerBlock) {
-			console.log(Error('not enough UTXs'))
+			console.warn(this.id, 'not enough UTXs')
 			return
 		}
 
-		const block = new Miner(this).mine(
-			this.utxs,
-			this.blockchain.lastBlock,
+		const [block, time] = measure(() =>
+			new Miner(this).mine(
+				this.utxs,
+				this.blockchain.lastBlock,
+			)
 		)
-		console.log(this.id, 'mined block', block)
+		console.log(this.id, `mined block in ${time}ms`, block)
 		this.verifyBlock(block)
 		this.broadcast({
 			type: 'mined',

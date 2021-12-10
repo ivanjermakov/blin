@@ -1,7 +1,7 @@
 import {Pool} from '../src/core/pool'
 import {Node} from '../src/core/node'
 import {Transaction} from '../src/core/transaction'
-import {Address} from '../src/core/address'
+import {Hash} from '../src/core/hash'
 
 
 describe('transaction verification test', () => {
@@ -13,7 +13,7 @@ describe('transaction verification test', () => {
 	beforeEach(() => {
 		pool = new Pool()
 		node = new Node(pool, 'basic')
-		transaction = node.createTransaction(new Address(), 12)
+		transaction = node.createTransaction(Hash.from(), 12)
 	})
 
 	it('should verify transaction', () => {
