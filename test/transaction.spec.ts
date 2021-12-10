@@ -18,15 +18,18 @@ describe('transaction verification test', () => {
 
 	it('should verify transaction', () => {
 		const recNode = new Node(pool, 'full')
+
 		const verified = recNode.verifyTransaction(transaction)
+
 		expect(verified).toBeTruthy()
 	})
 
 	it('should not verify modified transaction', () => {
+		const recNode = new Node(pool, 'full')
 		transaction.value = 142
 
-		const recNode = new Node(pool, 'full')
 		const verified = recNode.verifyTransaction(transaction)
+
 		expect(verified).toBeFalse()
 	})
 
